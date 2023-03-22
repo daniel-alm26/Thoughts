@@ -1,16 +1,32 @@
 const Tought = require('../models/Tought')
 const User = require('../models/User')
 
+const { Op } = require('sequelize') // Op = Operador, pode-se criar diversas situações com query.
+
 module.exports = class ToughtController {
     static async showToughts(req, res) {
+        let search = ''
+
+        if (req.query.search) {
+            search = req.query.search
+        }
 
         const toughtsData = await Tought.findAll({
             include: User,
+            where: {
+                title: { [Op.like]: `%${search}%` },
+            }
         })
 
         const toughts = toughtsData.map((result) => result.get({ plain: true }))
 
-        res.render('toughts/home', { toughts })
+        let toughtsQty = toughts.length
+
+        if (toughtsQty === 0) {
+            toughtsQty = false
+        }
+
+        res.render('toughts/home', { toughts, search, toughtsQty })
     }
 
     static async dashboard(req, res) {
@@ -18,7 +34,7 @@ module.exports = class ToughtController {
 
         const user = await User.findOne({
             where: {
-                id: userId,                
+                id: userId,
             },
             include: Tought,
             plain: true,
@@ -50,14 +66,14 @@ module.exports = class ToughtController {
             UserId: req.session.userid,
         }
 
-       try {
+        try {
             await Tought.create(tought)
 
             req.flash('message', 'Pensamento criado com sucesso!')
 
             req.session.save(() => {
                 res.redirect('/toughts/dashboard')
-            })        
+            })
         } catch (error) {
             console.log('Aconteceu um erro: ' + error)
         }
@@ -68,7 +84,7 @@ module.exports = class ToughtController {
         const UserId = req.session.userid
 
         try {
-            await Tought.destroy({ where: { id: id, UserId: UserId }})
+            await Tought.destroy({ where: { id: id, UserId: UserId } })
 
             req.flash('message', 'Pensamento removido com sucesso!')
 
